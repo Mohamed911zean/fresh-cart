@@ -1,11 +1,25 @@
-import Link from "next/link";
+"use client";
 
-export const metadata = {
-    title: "Sign In — FreshCart",
-    description: "Sign in to continue your fresh shopping experience",
-};
+import Link from "next/link";
+import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
 
 export default function LoginPage() {
+    const { login, isLoading } = useAuth();
+    const [formData, setFormData] = useState({
+        email: "",
+        password: "",
+    });
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        await login(formData);
+    };
+
     return (
         <div className="min-h-[calc(100vh-4rem)] flex">
             {/* Left — Branding */}
@@ -31,11 +45,15 @@ export default function LoginPage() {
                     <h1 className="text-3xl font-bold text-[var(--text-dark)] mb-2">Welcome Back!</h1>
                     <p className="text-[var(--text-gray)] mb-8">Sign in to continue your fresh shopping experience</p>
 
-                    <form className="space-y-5">
+                    <form className="space-y-5" onSubmit={handleSubmit}>
                         <div>
                             <label className="block text-sm font-semibold text-[var(--text-dark)] mb-2">Email Address</label>
                             <input
+                                name="email"
                                 type="email"
+                                required
+                                value={formData.email}
+                                onChange={handleChange}
                                 placeholder="Enter your email"
                                 className="w-full px-4 py-3 rounded-xl border border-[var(--border)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-light)] transition-all text-sm bg-[var(--bg-light)]"
                             />
@@ -43,7 +61,11 @@ export default function LoginPage() {
                         <div>
                             <label className="block text-sm font-semibold text-[var(--text-dark)] mb-2">Password</label>
                             <input
+                                name="password"
                                 type="password"
+                                required
+                                value={formData.password}
+                                onChange={handleChange}
                                 placeholder="Enter your password"
                                 className="w-full px-4 py-3 rounded-xl border border-[var(--border)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-light)] transition-all text-sm bg-[var(--bg-light)]"
                             />
@@ -60,10 +82,11 @@ export default function LoginPage() {
                         </div>
 
                         <button
-                            type="button"
-                            className="w-full py-3.5 bg-[var(--primary)] text-white rounded-xl font-bold text-sm hover:bg-[var(--primary-dark)] transition-colors shadow-sm shadow-[var(--primary)]/20"
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full py-3.5 bg-[var(--primary)] text-white rounded-xl font-bold text-sm hover:bg-[var(--primary-dark)] transition-colors shadow-sm shadow-[var(--primary)]/20 disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                            Sign In
+                            {isLoading ? "Signing In..." : "Sign In"}
                         </button>
                     </form>
 

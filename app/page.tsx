@@ -173,15 +173,53 @@ export default async function HomePage() {
       <HeroSlider />
 
       {/* Feature Badges */}
-      <section className="border-y border-gray-100 bg-white">
-        <div className="mx-auto w-auto px-4 py-8">
-          <div className="grid grid-cols-2 gap-6 md:grid-cols-4">
-            {FEATURE_BADGES.map((feature) => (
-              <FeatureBadge key={feature.title} feature={feature} />
-            ))}
+
+  <section className="border-y border-gray-100 bg-white">
+  <div className="mx-auto w-auto px-4 py-8">
+    <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
+      {FEATURE_BADGES.map((feature) => (
+        <div
+          key={feature.title}
+          className="
+            flex items-center gap-4
+            rounded-xl
+            border border-gray-100
+            bg-white
+            p-5
+            shadow-sm
+            transition
+            hover:shadow-md
+          "
+        >
+          {/* Icon */}
+          <div
+            className={`
+              flex h-12 w-12 items-center justify-center
+              rounded-full
+              ${feature.bgColor}
+              ${feature.color}
+            `}
+          >
+            {feature.icon}
+          </div>
+
+          {/* Text */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">
+              {feature.title}
+            </h3>
+            <p className="text-xs text-gray-500">
+              {feature.desc}
+            </p>
           </div>
         </div>
-      </section>
+      ))}
+    </div>
+  </div>
+</section>
+
+  
+
 
       {/* Shop By Category */}
       <section className="mx-auto max-w-7xl px-4 py-12">

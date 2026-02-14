@@ -1,11 +1,35 @@
-import Link from "next/link";
+"use client";
 
-export const metadata = {
-    title: "Create Account — FreshCart",
-    description: "Create your FreshCart account and start shopping",
-};
+import Link from "next/link";
+import { useState } from "react";
+import { useAuth } from "../context/AuthContext";
+import toast from "react-hot-toast";
 
 export default function RegisterPage() {
+    const { register, isLoading } = useAuth();
+    const [formData, setFormData] = useState({
+        name: "",
+        email: "",
+        phone: "",
+        password: "",
+        rePassword: "",
+    });
+
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        setFormData({ ...formData, [e.target.name]: e.target.value });
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+
+        if (formData.password !== formData.rePassword) {
+            toast.error("Passwords do not match");
+            return;
+        }
+
+        await register(formData);
+    };
+
     return (
         <div className="min-h-[calc(100vh-4rem)] flex">
             {/* Left — Branding */}
@@ -31,11 +55,15 @@ export default function RegisterPage() {
                     <h1 className="text-3xl font-bold text-[var(--text-dark)] mb-2">Create Account</h1>
                     <p className="text-[var(--text-gray)] mb-8">Join FreshCart and start your fresh shopping experience</p>
 
-                    <form className="space-y-4">
+                    <form className="space-y-4" onSubmit={handleSubmit}>
                         <div>
                             <label className="block text-sm font-semibold text-[var(--text-dark)] mb-2">Full Name</label>
                             <input
+                                name="name"
                                 type="text"
+                                required
+                                value={formData.name}
+                                onChange={handleChange}
                                 placeholder="Enter your full name"
                                 className="w-full px-4 py-3 rounded-xl border border-[var(--border)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-light)] transition-all text-sm bg-[var(--bg-light)]"
                             />
@@ -43,7 +71,11 @@ export default function RegisterPage() {
                         <div>
                             <label className="block text-sm font-semibold text-[var(--text-dark)] mb-2">Email Address</label>
                             <input
+                                name="email"
                                 type="email"
+                                required
+                                value={formData.email}
+                                onChange={handleChange}
                                 placeholder="Enter your email"
                                 className="w-full px-4 py-3 rounded-xl border border-[var(--border)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-light)] transition-all text-sm bg-[var(--bg-light)]"
                             />
@@ -51,7 +83,11 @@ export default function RegisterPage() {
                         <div>
                             <label className="block text-sm font-semibold text-[var(--text-dark)] mb-2">Phone Number</label>
                             <input
+                                name="phone"
                                 type="tel"
+                                required
+                                value={formData.phone}
+                                onChange={handleChange}
                                 placeholder="Enter your phone number"
                                 className="w-full px-4 py-3 rounded-xl border border-[var(--border)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-light)] transition-all text-sm bg-[var(--bg-light)]"
                             />
@@ -59,7 +95,11 @@ export default function RegisterPage() {
                         <div>
                             <label className="block text-sm font-semibold text-[var(--text-dark)] mb-2">Password</label>
                             <input
+                                name="password"
                                 type="password"
+                                required
+                                value={formData.password}
+                                onChange={handleChange}
                                 placeholder="Create a password"
                                 className="w-full px-4 py-3 rounded-xl border border-[var(--border)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-light)] transition-all text-sm bg-[var(--bg-light)]"
                             />
@@ -67,17 +107,22 @@ export default function RegisterPage() {
                         <div>
                             <label className="block text-sm font-semibold text-[var(--text-dark)] mb-2">Confirm Password</label>
                             <input
+                                name="rePassword"
                                 type="password"
+                                required
+                                value={formData.rePassword}
+                                onChange={handleChange}
                                 placeholder="Confirm your password"
                                 className="w-full px-4 py-3 rounded-xl border border-[var(--border)] outline-none focus:border-[var(--primary)] focus:ring-2 focus:ring-[var(--primary-light)] transition-all text-sm bg-[var(--bg-light)]"
                             />
                         </div>
 
                         <button
-                            type="button"
-                            className="w-full py-3.5 bg-[var(--primary)] text-white rounded-xl font-bold text-sm hover:bg-[var(--primary-dark)] transition-colors shadow-sm shadow-[var(--primary)]/20 mt-2"
+                            type="submit"
+                            disabled={isLoading}
+                            className="w-full py-3.5 bg-[var(--primary)] text-white rounded-xl font-bold text-sm hover:bg-[var(--primary-dark)] transition-colors shadow-sm shadow-[var(--primary)]/20 mt-2 disabled:opacity-70 disabled:cursor-not-allowed"
                         >
-                            Create Account
+                            {isLoading ? "Creating Account..." : "Create Account"}
                         </button>
                     </form>
 

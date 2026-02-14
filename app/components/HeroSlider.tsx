@@ -82,12 +82,14 @@ export default function HeroSlider() {
                     </p>
                     
                     <div className="flex gap-4 pt-4">
+                      <button className="text-green-500">
                       <Link 
                         href={slide.href}
-                        className="inline-block rounded-lg border-2 border-white bg-white px-8 py-3 font-semibold text-green-700 transition-all hover:scale-105 hover:bg-neutral-100"
+                        className="text-green-500 inline-block rounded-lg border-2 border-white bg-white px-8 py-3 font-semibold transition-all hover:scale-105 hover:bg-neutral-100"
                       >
                         {slide.primaryBtn}
                       </Link>
+                      </button>
                       <Link 
                         href="#"
                         className="inline-block rounded-lg border-2 border-white bg-transparent px-8 py-3 font-semibold text-white transition-all hover:scale-105 hover:bg-white/10"
