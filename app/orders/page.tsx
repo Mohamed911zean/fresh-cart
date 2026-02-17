@@ -46,7 +46,7 @@ interface Order {
 }
 
 export default function OrdersPage() {
-  const { user } = useAuth();
+  const { user , userId } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -59,26 +59,20 @@ export default function OrdersPage() {
   const fetchOrders = async () => {
     try {
       setIsLoading(true);
-      // The endpoint structure is: /orders/user/:userId
-      // But we need to get the user ID first from localStorage or context
-      // Since the API doesn't have a /orders endpoint that auto-gets current user
-      // We'll try to get user ID from the token or user object
-      
-      // For now, we'll use a workaround - try to get all orders
-      // If that fails, we'll show empty state
-      const { data } = await apiClient.get('/orders');
+     
+      const { data } = await apiClient.get(`/orders/user/${userId}`);
       
       setOrders(data.data || data || []);
     } catch (error: any) {
       console.error('Failed to fetch orders:', error);
-      // If we can't fetch orders, set empty array
+
       setOrders([]);
     } finally {
       setIsLoading(false);
     }
   };
 
-  // Generate fake order status based on order state
+
   const getOrderStatus = (order: Order) => {
     if (order.isDelivered) {
       return {
@@ -127,13 +121,13 @@ export default function OrdersPage() {
     <ProtectedRoute requireAuth>
       <div className="min-h-screen bg-gray-50 py-8">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Page Header */}
+
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-gray-900">My Orders</h1>
             <p className="text-gray-500 mt-2">Track and manage your orders</p>
           </div>
 
-          {/* Orders List */}
+
           {orders.length === 0 ? (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-12 text-center">
               <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -159,7 +153,7 @@ export default function OrdersPage() {
                     key={order._id} 
                     className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition-shadow"
                   >
-                    {/* Order Header */}
+
                     <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
                       <div className="flex flex-wrap items-center justify-between gap-4">
                         <div className="flex items-center gap-6 flex-wrap">
@@ -202,7 +196,7 @@ export default function OrdersPage() {
                       </div>
                     </div>
 
-                    {/* Order Items */}
+
                     <div className="p-6">
                       <div className="space-y-4 mb-6">
                         {order.cartItems.map((item) => (
@@ -233,7 +227,7 @@ export default function OrdersPage() {
                         ))}
                       </div>
 
-                      {/* Delivery Address */}
+
                       {order.shippingAddress && (
                         <div className="pt-4 border-t border-gray-200 mb-4">
                           <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2">
@@ -253,7 +247,7 @@ export default function OrdersPage() {
                         </div>
                       )}
 
-                      {/* Order Summary */}
+
                       <div className="pt-4 border-t border-gray-200">
                         <div className="flex justify-between items-center mb-2">
                           <span className="text-sm text-gray-600">Payment Method</span>
@@ -275,7 +269,7 @@ export default function OrdersPage() {
                         </div>
                       </div>
 
-                      {/* Order Actions */}
+
                       <div className="mt-6 flex gap-3">
                         <button className="flex-1 px-4 py-2 border-2 border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors text-sm">
                           Track Order

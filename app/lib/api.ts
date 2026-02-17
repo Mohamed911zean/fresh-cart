@@ -1,4 +1,5 @@
-const BASE_URL = "https://ecommerce.routemisr.com";
+
+const BASE_URL = process.env.BASE_URL;
 
 /* ─── Types ─── */
 

@@ -1,97 +1,99 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { InternalAxiosRequestConfig } from 'axios';
+import Cookies from 'js-cookie';
 import toast from 'react-hot-toast';
 
-// Create axios instance with base configuration
 const apiClient = axios.create({
-  baseURL: 'https://ecommerce.routemisr.com/api/v1',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+    baseURL: 'https://ecommerce.routemisr.com/api/v1',
+    timeout: 30000, 
 });
 
-// Request interceptor - Add token to all requests
+
 apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    // Get token from localStorage
-    const token = localStorage.getItem('freshCartToken');
-    
-    // If token exists, add it to headers
-    if (token) {
-      config.headers.token = token;
+    (config: InternalAxiosRequestConfig) => {
+        const token = localStorage.getItem('freshCartToken') || Cookies.get('freshCartToken');
+
+        if (token) {
+            config.headers.token = token;
+        }
+
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
     }
-    
-    return config;
-  },
-  (error: AxiosError) => {
-    return Promise.reject(error);
-  }
 );
 
-// Response interceptor - Handle errors globally
+
 apiClient.interceptors.response.use(
-  (response) => {
-    console.log(response.data)
-    return response;
-  },
-  (error: AxiosError<any>) => {
-    // Handle different error status codes
-    if (error.response) {
-      const status = error.response.status;
-      const message = error.response.data?.message || 'An error occurred';
+    (response) => {
+        return response;
+    },
+    (error) => {
+        if (error.response) {
+            const status = error.response.status;
+            const message = error.response.data?.message || error.message;
 
-      switch (status) {
-        case 401:
-          // Unauthorized - Clear auth data and redirect to login   
-          localStorage.removeItem('freshCartToken');
-          localStorage.removeItem('freshCartUser');
-          if (typeof window !== 'undefined') {
-            window.location.href = '/login';
-          }
-          toast.error('Credentials Invalid');
-          break;
+            switch (status) {
+                case 401:
 
-        case 403:
-          toast.error('You do not have permission to perform this action.');
-          break;
+                    console.error('Unauthorized - clearing auth data');
+                    localStorage.removeItem('freshCartToken');
+                    localStorage.removeItem('freshCartUser');
+                    Cookies.remove('freshCartToken');
+                    toast.error('Session expired. Please login again.');
 
-        case 404:
-          toast.error('Resource not found.');
-          break;
 
-        case 409:
-          // Conflict - usually email already exists
-          toast.error(message);
-          break;
+                    if (typeof window !== 'undefined') {
+                        window.location.href = '/login';
+                    }
+                    break;
 
-        case 422:
-          // Validation error
-          toast.error(message);
-          break;
+                case 500:
 
-        case 429:
-          toast.error('Too many requests. Please try again later.');
-          break;
+                    console.error('Server error:', message);
 
-        case 500:
-          toast.error('Server error. Please try again later.');
-          break;
 
-        default:
-          toast.error(message);
-      }
-    } else if (error.request) {
-      // Request was made but no response received
-      toast.error('Network error. Please check your connection.');
-    } else {
-      // Something else happened
-      toast.error('An unexpected error occurred.');
+                    if (error.config?.url?.includes('/cart') || error.config?.url?.includes('/wishlist')) {
+
+                        console.log('Cart/Wishlist error - token might be invalid');
+                    } else {
+                        toast.error('Server error. Please try again later.');
+                    }
+                    break;
+
+                case 404:
+
+                    if (error.config?.url?.includes('/cart') || error.config?.url?.includes('/wishlist')) {
+
+                        console.log('Cart/Wishlist not found - empty');
+                    } else {
+                        toast.error('Resource not found');
+                    }
+                    break;
+
+                case 400:
+
+                    toast.error(message || 'Invalid request');
+                    break;
+
+                default:
+
+                    console.error('API Error:', message);
+                    toast.error(message || 'Something went wrong');
+            }
+        } else if (error.code === 'ECONNABORTED') {
+    
+            toast.error('Request timeout. Please check your connection.');
+        } else if (error.message === 'Network Error') {
+
+            toast.error('Network error. Please check your connection.');
+        } else {
+
+            toast.error('An unexpected error occurred');
+        }
+
+        return Promise.reject(error);
     }
-
-    return Promise.reject(error);
-
-
-  }
 );
 
 export default apiClient;

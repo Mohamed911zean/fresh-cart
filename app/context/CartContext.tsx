@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import apiClient from '@/app/lib/axios';
+import cartApiClient from '@/app/lib/axios'
 import { useAuth } from '@/app/context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -59,7 +60,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
 
         try {
             setIsLoading(true);
-            // API endpoint: GET /cart
             const { data } = await apiClient.get('/cart');
             
             if (data.status === 'success') {
@@ -70,8 +70,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             }
         } catch (error: any) {
             console.error('Failed to fetch cart:', error);
-            // If cart doesn't exist (404), set empty cart
-            if (error.response?.status === 404) {
+            
+            // If 404 or 500, just set empty cart (don't show error to user)
+            if (error.response?.status === 404 || error.response?.status === 500) {
                 setCartItems([]);
                 setCartCount(0);
                 setTotalPrice(0);
@@ -100,7 +101,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         }
         
         try {
-            // API endpoint: POST /cart
             const { data } = await apiClient.post('/cart', { productId });
             
             if (data.status === 'success') {
@@ -112,7 +112,12 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             }
         } catch (error: any) {
             console.error('Failed to add to cart:', error);
-            toast.error(error.response?.data?.message || 'Failed to add to cart');
+            
+            // Don't show error if it's a 500 - axios interceptor handles it
+            if (error.response?.status !== 500) {
+                toast.error(error.response?.data?.message || 'Failed to add to cart');
+            }
+            throw error;
         }
     };
 
@@ -120,7 +125,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         if (!token || !isAuthenticated) return;
         
         try {
-            // API endpoint: DELETE /cart/:productId
             const { data } = await apiClient.delete(`/cart/${productId}`);
             
             if (data.status === 'success') {
@@ -132,7 +136,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             }
         } catch (error: any) {
             console.error('Failed to remove from cart:', error);
-            toast.error('Failed to remove item');
+            if (error.response?.status !== 500) {
+                toast.error('Failed to remove item');
+            }
         }
     };
 
@@ -141,7 +147,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         if (count < 1) return;
         
         try {
-            // API endpoint: PUT /cart/:productId
             const { data } = await apiClient.put(`/cart/${productId}`, { count });
             
             if (data.status === 'success') {
@@ -152,7 +157,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             }
         } catch (error: any) {
             console.error('Failed to update cart:', error);
-            toast.error('Failed to update quantity');
+            if (error.response?.status !== 500) {
+                toast.error('Failed to update quantity');
+            }
         }
     };
 
@@ -160,7 +167,6 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
         if (!token || !isAuthenticated) return;
         
         try {
-            // API endpoint: DELETE /cart
             await apiClient.delete('/cart');
             
             setCartItems([]);
@@ -170,7 +176,9 @@ export const CartProvider = ({ children }: { children: ReactNode }) => {
             toast.success('Cart cleared');
         } catch (error: any) {
             console.error('Failed to clear cart:', error);
-            toast.error('Failed to clear cart');
+            if (error.response?.status !== 500) {
+                toast.error('Failed to clear cart');
+            }
         }
     };
 

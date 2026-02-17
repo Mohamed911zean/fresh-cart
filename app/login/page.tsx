@@ -16,7 +16,7 @@ export default function LoginPage() {
         password: "",
     });
 
-    // Show message if redirected from protected route
+
     useEffect(() => {
         const redirect = searchParams.get('redirect');
         if (redirect) {
@@ -28,7 +28,7 @@ export default function LoginPage() {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
         
-        // Clear error for this field when user starts typing
+
         if (errors[name]) {
             setErrors(prev => {
                 const newErrors = { ...prev };
@@ -42,14 +42,14 @@ export default function LoginPage() {
         e.preventDefault();
         setErrors({});
 
-        // Validate form data
+
         const result = loginSchema.safeParse(formData);
 
         if (!result.success) {
             const fieldErrors = result.error.flatten().fieldErrors;
             setErrors(fieldErrors);
             
-            // Show first error in toast
+
             const firstError = Object.values(fieldErrors)[0]?.[0];
             if (firstError) {
                 toast.error(firstError);
@@ -60,14 +60,21 @@ export default function LoginPage() {
         try {
             await login(result.data);
         } catch (error: any) {
-            // Errors are handled by axios interceptor and AuthContext
+
             console.error('Login error:', error);
         }
     };
 
+//const token = localStorage.getItem('freshCartToken');
+//console.log('Token:', token);
+
+//const userId = localStorage.getItem('freshCartUserId');
+//console.log('User ID:', userId);
+
+
     return (
         <div className="min-h-[calc(100vh-4rem)] flex">
-            {/* Left — Branding */}
+          
             <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-emerald-600 via-green-600 to-teal-700 relative overflow-hidden">
                 <div className="absolute inset-0 opacity-10">
                     <div className="absolute top-20 left-20 w-64 h-64 bg-white rounded-full blur-3xl" />
@@ -86,7 +93,6 @@ export default function LoginPage() {
                 </div>
             </div>
 
-            {/* Right — Form */}
             <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 bg-white">
                 <div className="w-full max-w-md">
                     <h1 className="text-3xl font-bold text-[var(--text-dark)] mb-2">Welcome Back!</h1>

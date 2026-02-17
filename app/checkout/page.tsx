@@ -21,13 +21,12 @@ interface Address {
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const { cartItems, cartCount, totalPrice, isLoading: cartLoading } = useCart();
+  const { cartItems, cartCount, totalPrice, isLoading: cartLoading, cartData } = useCart();
   const { user } = useAuth();
   
   // States
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
-  const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
   const [loadingAddresses, setLoadingAddresses] = useState(true);
   
@@ -96,30 +95,22 @@ export default function CheckoutPage() {
         ? manualAddress 
         : addresses.find(addr => addr._id === selectedAddressId);
 
-      if (paymentMethod === 'cash') {
-        // Cash on delivery: POST /orders/:cartId
-        const cartId = cartItems[0]?._id; // Assuming cart has an ID
-        
-        const { data } = await apiClient.post(`/orders/${cartId}`, {
-          shippingAddress
-        });
+      // Get cart ID from cartData
+      const cartId = cartData?._id;
+      
+      if (!cartId) {
+        toast.error('Cart ID not found');
+        return;
+      }
 
-        if (data.status === 'success') {
-          toast.success('Order placed successfully!');
-          router.push('/orders');
-        }
-      } else {
-        // Online payment: POST /orders/checkout-session/:cartId
-        const cartId = cartItems[0]?._id;
-        
-        const { data } = await apiClient.post(`/orders/checkout-session/${cartId}`, {
-          shippingAddress
-        });
+      // Always use cash on delivery (payment methods are just for style)
+      const { data } = await apiClient.post(`/orders/${cartId}`, {
+        shippingAddress
+      });
 
-        if (data.status === 'success' && data.session?.url) {
-          // Redirect to payment gateway
-          window.location.href = data.session.url;
-        }
+      if (data.status === 'success') {
+        toast.success('Order placed successfully!');
+        router.push('/orders');
       }
     } catch (error: any) {
       console.error('Failed to place order:', error);
@@ -321,7 +312,7 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              {/* Payment Method Section */}
+              {/* Payment Method Section - MOCK ONLY */}
               <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
                 <div className="bg-green-500 px-6 py-4">
                   <div className="flex items-center gap-3 text-white">
@@ -334,73 +325,39 @@ export default function CheckoutPage() {
                 </div>
 
                 <div className="p-6 space-y-3">
-                  {/* Cash on Delivery */}
-                  <label
-                    className={`block p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                      paymentMethod === 'cash'
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 hover:border-green-300'
-                    }`}
-                  >
+                  {/* Cash on Delivery - Selected by default, only one that works */}
+                  <div className="block p-4 border-2 border-green-500 bg-green-50 rounded-xl">
                     <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                        paymentMethod === 'cash' ? 'bg-green-500' : 'bg-gray-100'
-                      }`}>
-                        <svg className={`w-6 h-6 ${paymentMethod === 'cash' ? 'text-white' : 'text-gray-600'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-green-500">
+                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z" />
                         </svg>
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            name="payment"
-                            value="cash"
-                            checked={paymentMethod === 'cash'}
-                            onChange={() => setPaymentMethod('cash')}
-                          />
                           <h3 className="font-bold text-gray-900">Cash on Delivery</h3>
-                          {paymentMethod === 'cash' && (
-                            <Check className="w-5 h-5 text-green-500 ml-auto" />
-                          )}
+                          <Check className="w-5 h-5 text-green-500 ml-auto" />
                         </div>
-                        <p className="text-sm text-gray-600 mt-1 ml-6">Pay when your order arrives at your doorstep</p>
+                        <p className="text-sm text-gray-600 mt-1">Pay when your order arrives at your doorstep</p>
                       </div>
                     </div>
-                  </label>
+                  </div>
 
-                  {/* Pay Online */}
-                  <label
-                    className={`block p-4 border-2 rounded-xl cursor-pointer transition-all ${
-                      paymentMethod === 'card'
-                        ? 'border-green-500 bg-green-50'
-                        : 'border-gray-200 hover:border-green-300'
-                    }`}
-                  >
+                  {/* Pay Online - Mock only (disabled style) */}
+                  <div className="block p-4 border-2 border-gray-200 bg-gray-50 rounded-xl opacity-60 cursor-not-allowed">
                     <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
-                        paymentMethod === 'card' ? 'bg-green-500' : 'bg-gray-100'
-                      }`}>
-                        <CreditCard className={`w-6 h-6 ${paymentMethod === 'card' ? 'text-white' : 'text-gray-600'}`} />
+                      <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-gray-200">
+                        <CreditCard className="w-6 h-6 text-gray-500" />
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center gap-2">
-                          <input
-                            type="radio"
-                            name="payment"
-                            value="card"
-                            checked={paymentMethod === 'card'}
-                            onChange={() => setPaymentMethod('card')}
-                          />
-                          <h3 className="font-bold text-gray-900">Pay Online</h3>
-                          {paymentMethod === 'card' && (
-                            <Check className="w-5 h-5 text-green-500 ml-auto" />
-                          )}
+                          <h3 className="font-bold text-gray-500">Pay Online</h3>
+                          <span className="ml-auto px-2 py-1 bg-gray-200 text-gray-600 text-xs rounded-full">Coming Soon</span>
                         </div>
-                        <p className="text-sm text-gray-600 mt-1 ml-6">Secure payment with Credit/Debit Card via Stripe</p>
+                        <p className="text-sm text-gray-500 mt-1">Secure payment with Credit/Debit Card</p>
                       </div>
                     </div>
-                  </label>
+                  </div>
 
                   {/* Security Badge */}
                   <div className="bg-green-50 border border-green-200 rounded-xl p-4 mt-4">
@@ -408,7 +365,7 @@ export default function CheckoutPage() {
                       <Shield className="w-5 h-5 text-green-600" />
                       <div>
                         <h4 className="text-sm font-bold text-green-900">Secure & Encrypted</h4>
-                        <p className="text-xs text-green-700">Your payment info is protected with 256-bit SSL encryption</p>
+                        <p className="text-xs text-green-700">Your information is protected with 256-bit SSL encryption</p>
                       </div>
                     </div>
                   </div>
