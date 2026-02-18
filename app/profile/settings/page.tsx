@@ -1,15 +1,16 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import ProtectedRoute from '@/app/components/protectedRoute';
 import AccountSidebar from '@/app/components/AccountSidebar';
 import { useAuth } from '@/app/context/AuthContext';
 import apiClient from '@/app/lib/axios';
 import toast from 'react-hot-toast';
 import { Eye, EyeOff, Lock, Truck, RotateCcw, CreditCard, Headset } from 'lucide-react';
+import Cookies from 'js-cookie';
 
 export default function SettingsPage() {
-  const { user, refreshUser } = useAuth();
+  const { user, userId, refreshUser } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
@@ -18,7 +19,7 @@ export default function SettingsPage() {
   const [profileData, setProfileData] = useState({
     name: user?.name || '',
     email: user?.email || '',
-    phone: '',
+    phone: user?.phone || '',
   });
 
   const [passwordData, setPasswordData] = useState({
@@ -26,6 +27,17 @@ export default function SettingsPage() {
     password: '',
     rePassword: '',
   });
+
+  // Update form when user data changes
+  useEffect(() => {
+    if (user) {
+      setProfileData({
+        name: user.name || '',
+        email: user.email || '',
+        phone: user.phone || '',
+      });
+    }
+  }, [user]);
 
   const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setProfileData(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -40,16 +52,28 @@ export default function SettingsPage() {
     setIsLoading(true);
 
     try {
-      // API endpoint: PUT /users/updateMe/
-      const { data } = await apiClient.put('/users/updateMe/', profileData);
+      const payload: any = {
+        name: profileData.name,
+        phone: profileData.phone
+      };
+      
+      // Only include email if it changed
+      if (profileData.email !== user?.email) {
+        payload.email = profileData.email;
+      }
+
+      const { data } = await apiClient.put('/users/updateMe/', payload);
       
       if (data.message === 'success') {
-        // Update user in localStorage
+        // Update localStorage with new data
         const updatedUser = {
+          _id: user?._id || userId || '',
           name: profileData.name,
           email: profileData.email,
-          role: user?.role || 'user'
+          phone: profileData.phone,
+          role: user?.role || 'user',
         };
+        
         localStorage.setItem('freshCartUser', JSON.stringify(updatedUser));
         await refreshUser();
         toast.success('Profile updated successfully!');
@@ -78,7 +102,6 @@ export default function SettingsPage() {
     setIsLoading(true);
 
     try {
-      // API endpoint: PUT /users/changeMyPassword
       const { data } = await apiClient.put('/users/changeMyPassword', {
         currentPassword: passwordData.currentPassword,
         password: passwordData.password,
@@ -96,6 +119,11 @@ export default function SettingsPage() {
         // Update token if API returns a new one
         if (data.token) {
           localStorage.setItem('freshCartToken', data.token);
+          Cookies.set('freshCartToken', data.token, {
+            expires: 90,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'strict',
+          });
         }
       }
     } catch (error: any) {
@@ -159,7 +187,7 @@ export default function SettingsPage() {
                         type="text"
                         value={profileData.name}
                         onChange={handleProfileChange}
-                        placeholder="Mohamed Zean"
+                        placeholder="Enter your name"
                         className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-green-500 focus:ring-2 focus:ring-green-100 outline-none transition-all"
                       />
                     </div>
@@ -210,14 +238,14 @@ export default function SettingsPage() {
                   <h4 className="text-sm font-bold text-gray-900 mb-3">Account Information</h4>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-600">Email</span>
-                      <span className="text-sm font-semibold text-gray-900">
-                        {user?.email}
+                      <span className="text-sm text-gray-600">User ID</span>
+                      <span className="text-sm font-mono text-gray-900 bg-white px-2 py-1 rounded">
+                        {user?._id || userId || 'N/A'}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">Role</span>
-                      <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full">
+                      <span className="px-3 py-1 bg-green-100 text-green-700 text-xs font-semibold rounded-full capitalize">
                         {user?.role || 'User'}
                       </span>
                     </div>
@@ -317,56 +345,8 @@ export default function SettingsPage() {
                 </div>
               </div>
 
-              {/* Features Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-green-50 rounded-2xl p-6 border border-green-100">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-green-500 flex items-center justify-center flex-shrink-0">
-                      <Truck className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 mb-1">Free Shipping</h4>
-                      <p className="text-sm text-gray-600">On orders over 500 EGP</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-green-50 rounded-2xl p-6 border border-green-100">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-green-500 flex items-center justify-center flex-shrink-0">
-                      <RotateCcw className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 mb-1">Easy Returns</h4>
-                      <p className="text-sm text-gray-600">30-day return policy</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-green-50 rounded-2xl p-6 border border-green-100">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-green-500 flex items-center justify-center flex-shrink-0">
-                      <CreditCard className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 mb-1">Secure Payment</h4>
-                      <p className="text-sm text-gray-600">100% secure checkout</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-green-50 rounded-2xl p-6 border border-green-100">
-                  <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-green-500 flex items-center justify-center flex-shrink-0">
-                      <Headset className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 mb-1">24/7 Support</h4>
-                      <p className="text-sm text-gray-600">Dedicated support team</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            
+              
             </div>
           </div>
         </div>

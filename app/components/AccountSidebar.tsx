@@ -2,13 +2,13 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { MapPin, Settings, User } from 'lucide-react';
+import {  Settings, User } from 'lucide-react';
 
 const menuItems = [
   {
-    href: '/profile/addresses',
-    label: 'My Addresses',
-    icon: MapPin,
+    href: '/profile',
+    label: 'My Profile',
+    icon: User,
   },
   {
     href: '/profile/settings',

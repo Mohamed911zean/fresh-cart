@@ -8,16 +8,17 @@ import Cookies from 'js-cookie';
 import { decodeJWT, isTokenExpired } from '@/app/utils/jwtUtils';
 
 interface User {
+  _id: string;        // API returns _id
   name: string;
   email: string;
+  phone: string;      // From API
   role: string;
-  id?: string; 
 }
 
 interface AuthContextType {
   user: User | null;
   token: string | null;
-  userId: string | null; 
+  userId: string | null;
   isLoading: boolean;
   isAuthenticated: boolean;
   login: (userData: any) => Promise<void>;
@@ -35,7 +36,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
 
-
   useEffect(() => {
     const initializeAuth = () => {
       try {
@@ -44,7 +44,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const storedUserId = localStorage.getItem('freshCartUserId');
 
         if (storedToken && storedUser) {
-
           if (isTokenExpired(storedToken)) {
             console.log('Token expired - clearing auth data');
             clearAuthData();
@@ -52,18 +51,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             return;
           }
           
+          const parsedUser = JSON.parse(storedUser);
           setToken(storedToken);
-          setUser(JSON.parse(storedUser));
+          setUser(parsedUser);
           
-
-          if (!storedUserId) {
+          // Set user ID from stored or from user object
+          const extractedUserId = storedUserId || parsedUser._id;
+          if (extractedUserId) {
+            setUserId(extractedUserId);
+            if (!storedUserId) {
+              localStorage.setItem('freshCartUserId', extractedUserId);
+            }
+          } else {
+            // Try to decode from token
             const decoded = decodeJWT(storedToken);
             if (decoded?.id) {
               setUserId(decoded.id);
               localStorage.setItem('freshCartUserId', decoded.id);
             }
-          } else {
-            setUserId(storedUserId);
           }
         }
       } catch (error) {
@@ -77,10 +82,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     initializeAuth();
   }, []);
 
-  const saveAuthData = (token: string, user: User) => {
-
+  const saveAuthData = (token: string, apiUser: any) => {
+    // Map API user to our User interface
+    const user: User = {
+      _id: apiUser._id,
+      name: apiUser.name,
+      email: apiUser.email,
+      phone: apiUser.phone || '',
+      role: apiUser.role || 'user',
+    };
+    
+    // Try to get ID from JWT token as backup
     const decoded = decodeJWT(token);
-    const extractedUserId = decoded?.id || user.id;
+    const extractedUserId = apiUser._id || decoded?.id;
     
     setToken(token);
     setUser(user);
@@ -93,14 +107,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       localStorage.setItem('freshCartUserId', extractedUserId);
     }
     
-
     Cookies.set('freshCartToken', token, {
       expires: 90,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
     });
   };
-
 
   const clearAuthData = () => {
     setToken(null);
@@ -127,7 +139,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         saveAuthData(token, user);
         toast.success('Welcome back!');
         
-
         const searchParams = new URLSearchParams(window.location.search);
         const redirect = searchParams.get('redirect') || '/';
         router.push(redirect);
@@ -200,7 +211,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       const storedUser = localStorage.getItem('freshCartUser');
       if (storedUser) {
-        setUser(JSON.parse(storedUser));
+        const parsedUser = JSON.parse(storedUser);
+        setUser(parsedUser);
+        
+        // Update userId if needed
+        if (parsedUser._id && !userId) {
+          setUserId(parsedUser._id);
+          localStorage.setItem('freshCartUserId', parsedUser._id);
+        }
       }
     } catch (error) {
       console.error('Failed to refresh user:', error);
@@ -210,7 +228,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const value = {
     user,
     token,
-    userId, 
+    userId,
     isLoading,
     isAuthenticated: !!token && !!user,
     login,
