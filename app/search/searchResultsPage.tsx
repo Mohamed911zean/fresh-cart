@@ -62,6 +62,9 @@ export default function SearchResultsPage() {
   // Search input state
   const [searchInput, setSearchInput] = useState(query);
 
+  const BASE_URL= process.env.NEXT_PUBLIC_API_URL;
+
+
   useEffect(() => {
     fetchData();
   }, [brandParam]);
@@ -80,18 +83,15 @@ export default function SearchResultsPage() {
       let productsData;
       let brandData = null;
 
-      // If brand ID is provided, use brand-specific endpoint
       if (brandParam) {
-        // Fetch products for specific brand
         const brandProductsRes = await fetch(
-          `https://ecommerce.routemisr.com/api/v1/products?brand=${brandParam}`
+          `${BASE_URL}/products?brand=${brandParam}`
         );
         productsData = await brandProductsRes.json();
 
-        // Fetch brand details
         try {
           const brandRes = await fetch(
-            `https://ecommerce.routemisr.com/api/v1/brands/${brandParam}`
+            `${BASE_URL}/brands/${brandParam}`
           );
           brandData = await brandRes.json();
           if (brandData.data) {
@@ -102,14 +102,14 @@ export default function SearchResultsPage() {
         }
       } else {
         // Fetch all products for search
-        const productsRes = await fetch('https://ecommerce.routemisr.com/api/v1/products');
+        const productsRes = await fetch(`${BASE_URL}/products`);
         productsData = await productsRes.json();
       }
 
       // Fetch categories and brands for filters
       const [categoriesRes, brandsRes] = await Promise.all([
-        fetch('https://ecommerce.routemisr.com/api/v1/categories'),
-        fetch('https://ecommerce.routemisr.com/api/v1/brands')
+        fetch(`${BASE_URL}/categories`),
+        fetch(`${BASE_URL}/brands`)
       ]);
 
       const categoriesData = await categoriesRes.json();
