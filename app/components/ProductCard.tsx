@@ -140,7 +140,7 @@ export default function ProductCard({ product }: ProductCardProps) {
 
         {/* Rating */}
         <div className="flex items-center gap-2 mb-3">
-          <StarRating rating={product.ratingsAverage} size="sm" />
+          <StarRating rating={product.ratingsAverage}  />
           <span className="text-xs text-gray-500">
             ({product.ratingsQuantity})
           </span>

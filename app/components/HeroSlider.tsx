@@ -107,7 +107,7 @@ export default function HeroSlider() {
         {/* Custom Navigation Arrows - Fixed */}
         <button 
           onClick={() => swiperInstance?.slidePrev()}
-          className="absolute left-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white text-green-700 shadow-lg transition-all hover:scale-110 md:left-8"
+          className="absolute left-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white text-green-700 shadow-lg transition-all hover:scale-110 md:left-8 hidden md:flex "
           aria-label="Previous slide"
         >
           <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -116,7 +116,7 @@ export default function HeroSlider() {
         </button>
         <button 
           onClick={() => swiperInstance?.slideNext()}
-          className="absolute right-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white text-green-700 shadow-lg transition-all hover:scale-110 md:right-8"
+          className="absolute right-4 top-1/2 z-10 flex h-12 w-12 -translate-y-1/2 items-center justify-center rounded-full bg-white text-green-700 shadow-lg transition-all hover:scale-110 md:right-8 hidden md:flex"
           aria-label="Next slide"
         >
           <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
