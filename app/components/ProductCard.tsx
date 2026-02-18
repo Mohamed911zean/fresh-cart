@@ -1,127 +1,184 @@
 'use client';
 
-import Image from "next/image";
-import Link from "next/link";
-import StarRating from "./StarRating";
-import type { Product } from "@/app/lib/api";
-import { useCart } from "@/app/context/CartContext";
-import { useWishlist } from "@/app/context/WishlistContext";
-import { Heart } from "lucide-react";
+import Link from 'next/link';
+import Image from 'next/image';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Heart, ShoppingCart, Eye } from 'lucide-react';
+import { useAuth } from '@/app/context/AuthContext';
+import { useCart } from '@/app/context/CartContext';
+import { useWishlist } from '@/app/context/WishlistContext';
+import StarRating from './StarRating';
 
-export default function ProductCard({ product }: { product: Product }) {
-    const { addToCart } = useCart();
-    const { addToWishlist, removeFromWishlist, isInWishlist } = useWishlist();
 
-    const isWishlisted = isInWishlist(product._id);
+interface Product {
+  _id: string;
+  title: string;
+  price: number;
+  priceAfterDiscount?: number;
+  imageCover: string;
+  ratingsAverage: number;
+  ratingsQuantity: number;
+  quantity: number;
+}
 
-    // دالة للتعامل مع إضافة المنتج للسلة دون فتح صفحة المنتج
-    const handleAddToCart = async (e: React.MouseEvent) => {
-        e.preventDefault(); // يمنع اللينك الأب من العمل
-        e.stopPropagation(); // يمنع وصول الحدث للعناصر الأب
-        await addToCart(product._id);
-    };
+interface ProductCardProps {
+  product: Product;
+}
 
-    const handleWishlist = async (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
-        if (isWishlisted) {
-            await removeFromWishlist(product._id);
-        } else {
-            await addToWishlist(product._id);
-        }
-    };
+export default function ProductCard({ product }: ProductCardProps) {
+  const router = useRouter();
+  const { isAuthenticated } = useAuth();
+  const { addToCart } = useCart();
+  const { isInWishlist, addToWishlist, removeFromWishlist } = useWishlist();
+  
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [isTogglingWishlist, setIsTogglingWishlist] = useState(false);
 
-    return (
-        <div className="group relative bg-white rounded-2xl border border-gray-200 overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:border-green-500">
+  const inWishlist = isInWishlist(product._id);
+  const discountPercentage = product.priceAfterDiscount
+    ? Math.round(((product.price - product.priceAfterDiscount) / product.price) * 100)
+    : 0;
 
-            {/* اللينك يغطي الكارت بالكامل كطبقة أساسية */}
-            <Link href={`/products/${product._id}`} className="absolute inset-0 z-0">
-                <span className="sr-only">View {product.title}</span>
-            </Link>
+  const handleAddToCart = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-            {/* Image Container */}
-            <div className="relative aspect-square bg-gray-50 overflow-hidden">
-                <Image
-                    src={product.imageCover}
-                    alt={product.title}
-                    fill
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                    className="object-cover transition-transform duration-500 group-hover:scale-110"
-                />
+    if (!isAuthenticated) {
+      router.push('/login?redirect=' + window.location.pathname);
+      return;
+    }
 
-                {/* Overlay */}
-                <div className="absolute inset-0 bg-black/0 group-hover:bg-black/5 transition-colors pointer-events-none" />
+    if (product.quantity === 0) return;
 
-                {/* Wishlist Button - زدنا الـ z-index ليصبح فوق اللينك */}
-                <button
-                    onClick={handleWishlist}
-                    className={`
-                        absolute top-3 right-3 z-10 w-9 h-9 rounded-full
-                        backdrop-blur flex items-center justify-center
-                        shadow-md transition-all duration-300
-                        translate-y-2 opacity-0 group-hover:opacity-100 group-hover:translate-y-0
-                        ${isWishlisted
-                            ? "bg-red-50 text-red-500 opacity-100 translate-y-0"
-                            : "bg-white/90 text-gray-400 hover:text-red-500 hover:scale-110"}
-                    `}
-                >
-                    <Heart className={`w-5 h-5 ${isWishlisted ? "fill-current" : ""}`} />
-                </button>
-            </div>
+    setIsAddingToCart(true);
+    try {
+      await addToCart(product._id);
+    } catch (error) {
+      console.error('Failed to add to cart:', error);
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
 
-            {/* Info Section */}
-            <div className="p-4 flex flex-col gap-2 relative z-10 pointer-events-none">
-                {/* pointer-events-none هنا عشان اللينك اللي تحت يشتغل، ونرجع الـ auto للأزرار بس */}
+  const handleToggleWishlist = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
 
-                <span className="text-[10px] md:text-xs font-bold uppercase tracking-widest text-green-600">
-                    {product.category.name}
-                </span>
+    if (!isAuthenticated) {
+      router.push('/login?redirect=' + window.location.pathname);
+      return;
+    }
 
-                <h3 className="text-sm font-semibold text-gray-800 line-clamp-2 leading-snug min-h-[2.6rem]">
-                    {product.title}
-                </h3>
+    setIsTogglingWishlist(true);
+    try {
+      if (inWishlist) {
+        await removeFromWishlist(product._id);
+      } else {
+        await addToWishlist(product._id);
+      }
+    } catch (error) {
+      console.error('Failed to toggle wishlist:', error);
+    } finally {
+      setIsTogglingWishlist(false);
+    }
+  };
 
-                <div className="flex items-center gap-1.5">
-                    <StarRating rating={product.ratingsAverage} />
-                    <span className="text-xs text-gray-400">
-                        ({product.ratingsAverage.toFixed(1)})
-                    </span>
-                </div>
-
-                <div className="mt-2 flex items-center justify-between pointer-events-auto">
-                    <p className="text-lg font-bold text-gray-900">
-                        {product.price.toLocaleString()}
-                        <span className="ml-1 text-xs font-normal text-gray-500">EGP</span>
-                    </p>
-
-                    {/* Add to Cart Button */}
-                    <button
-                        onClick={handleAddToCart}
-                        className="
-                            relative z-20 flex items-center gap-2 h-10 px-4
-                            rounded-xl bg-green-600 text-white
-                            font-bold text-sm shadow-lg shadow-green-200
-                            transition-all duration-300
-                            hover:bg-green-700 hover:scale-105 active:scale-95
-                        "
-                    >
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2.5} viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        <span className="hidden sm:inline-block">Add</span>
-                    </button>
-                </div>
-            </div>
-
-            <style>{`
-                @keyframes fadeIn {
-                    from { opacity: 0; transform: translateX(-4px); }
-                    to { opacity: 1; transform: translateX(0); }
-                }
-                .animate-fadeIn {
-                    animation: fadeIn 0.2s ease-out forwards;
-                }
-            `}</style>
+  return (
+    <Link
+      href={`/products/${product._id}`}
+      className="group bg-white rounded-2xl border-2 border-gray-200 overflow-hidden hover:border-green-500 hover:shadow-xl transition-all duration-300"
+    >
+      {/* Image Container */}
+      <div className="relative aspect-square bg-gray-50 overflow-hidden">
+        <Image
+          src={product.imageCover}
+          alt={product.title}
+          fill
+          className="object-cover p-4 group-hover:scale-110 transition-transform duration-300"
+        />
+        
+        {/* Badges */}
+        <div className="absolute top-3 left-3 flex flex-col gap-2">
+          {product.quantity === 0 && (
+            <span className="px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
+              Out of Stock
+            </span>
+          )}
+          {discountPercentage > 0 && (
+            <span className="px-3 py-1 bg-red-500 text-white text-xs font-bold rounded-full">
+              -{discountPercentage}%
+            </span>
+          )}
         </div>
-    );
+
+        {/* Quick Actions - Show on hover */}
+        <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={handleToggleWishlist}
+            disabled={isTogglingWishlist}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${
+              inWishlist
+                ? 'bg-red-500 text-white'
+                : 'bg-white text-gray-700 hover:bg-red-50 hover:text-red-500'
+            } shadow-lg disabled:opacity-50 disabled:cursor-not-allowed`}
+          >
+            {isTogglingWishlist ? (
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin"></div>
+            ) : (
+              <Heart className={`w-5 h-5 ${inWishlist ? 'fill-current' : ''}`} />
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* Product Info */}
+      <div className="p-4">
+        <h3 className="text-sm font-semibold text-gray-900 line-clamp-2 mb-2 min-h-[2.5rem]">
+          {product.title}
+        </h3>
+
+        {/* Rating */}
+        <div className="flex items-center gap-2 mb-3">
+          <StarRating rating={product.ratingsAverage} size="sm" />
+          <span className="text-xs text-gray-500">
+            ({product.ratingsQuantity})
+          </span>
+        </div>
+
+        {/* Price */}
+        <div className="flex items-center gap-2 mb-3">
+          <span className="text-lg font-bold text-green-600">
+            {product.priceAfterDiscount || product.price} EGP
+          </span>
+          {product.priceAfterDiscount && (
+            <span className="text-sm text-gray-400 line-through">
+              {product.price} EGP
+            </span>
+          )}
+        </div>
+
+        {/* Add to Cart Button */}
+        <button
+          onClick={handleAddToCart}
+          disabled={isAddingToCart || product.quantity === 0}
+          className="w-full py-2.5 bg-green-500 text-white font-semibold rounded-xl hover:bg-green-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group-hover:scale-105"
+        >
+          {isAddingToCart ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              Adding...
+            </>
+          ) : product.quantity === 0 ? (
+            'Out of Stock'
+          ) : (
+            <>
+              <ShoppingCart className="w-4 h-4" />
+              Add to Cart
+            </>
+          )}
+        </button>
+      </div>
+    </Link>
+  );
 }

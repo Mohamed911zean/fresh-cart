@@ -2,7 +2,6 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import apiClient from '@/app/lib/axios';
-import cartApiClient from '@/app/lib/axios'
 import { useAuth } from '@/app/context/AuthContext';
 import toast from 'react-hot-toast';
 

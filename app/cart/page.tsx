@@ -2,12 +2,55 @@
 
 import Link from "next/link";
 import Image from "next/image";
+import { useState } from "react";
 import { useCart } from "@/app/context/CartContext";
-import { Trash2, Plus, Minus, ArrowRight } from "lucide-react"
+import DeleteConfirmModal from "@/app/components/DeleteConfirmModal";
+import { Trash2, Plus, Minus, ArrowRight } from "lucide-react";
 import CartSkeleton from "../components/CartSkeleton";
 
 export default function CartPage() {
     const { cartItems, cartCount, cartData, updateCartItemCount, removeFromCart, clearCart, isLoading } = useCart();
+    
+    // Delete modal state
+    const [deleteModal, setDeleteModal] = useState({
+        isOpen: false,
+        productId: '',
+        productName: '',
+        isDeleting: false
+    });
+
+    // Update loading states for each item
+    const [updatingItems, setUpdatingItems] = useState<Record<string, boolean>>({});
+
+    const handleDeleteClick = (productId: string, productName: string) => {
+        setDeleteModal({
+            isOpen: true,
+            productId,
+            productName,
+            isDeleting: false
+        });
+    };
+
+    const handleConfirmDelete = async () => {
+        setDeleteModal(prev => ({ ...prev, isDeleting: true }));
+        try {
+            await removeFromCart(deleteModal.productId);
+            setDeleteModal({ isOpen: false, productId: '', productName: '', isDeleting: false });
+        } catch (error) {
+            setDeleteModal(prev => ({ ...prev, isDeleting: false }));
+        }
+    };
+
+    const handleUpdateQuantity = async (productId: string, newCount: number) => {
+        if (newCount < 1) return;
+        
+        setUpdatingItems(prev => ({ ...prev, [productId]: true }));
+        try {
+            await updateCartItemCount(productId, newCount);
+        } finally {
+            setUpdatingItems(prev => ({ ...prev, [productId]: false }));
+        }
+    };
 
     if (isLoading) {
         return <CartSkeleton />;
@@ -43,135 +86,156 @@ export default function CartPage() {
     }
 
     return (
-        <div className="bg-[var(--bg-light)] min-h-screen pb-20">
-            <div className="bg-white border-b border-[var(--border)] mb-8">
-                <div className="max-w-7xl mx-auto px-4 py-8 md:py-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h1 className="text-3xl font-bold text-[var(--text-dark)]">Shopping Cart</h1>
-                        <p className="text-[var(--text-gray)] mt-1">{cartCount} items in your cart</p>
+        <>
+            <div className="bg-[var(--bg-light)] min-h-screen pb-20">
+                <div className="bg-white border-b border-[var(--border)] mb-8">
+                    <div className="max-w-7xl mx-auto px-4 py-8 md:py-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                        <div>
+                            <h1 className="text-3xl font-bold text-[var(--text-dark)]">Shopping Cart</h1>
+                            <p className="text-[var(--text-gray)] mt-1">{cartCount} items in your cart</p>
+                        </div>
+                        <button
+                            onClick={() => clearCart()}
+                            className="flex items-center gap-2 text-red-500 hover:text-red-700 font-medium transition-colors px-4 py-2 rounded-lg hover:bg-red-50"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                            Clear Cart
+                        </button>
                     </div>
-                    <button
-                        onClick={() => clearCart()}
-                        className="flex items-center gap-2 text-red-500 hover:text-red-700 font-medium transition-colors px-4 py-2 rounded-lg hover:bg-red-50"
-                    >
-                        <Trash2 className="w-4 h-4" />
-                        Clear Cart
-                    </button>
                 </div>
-            </div>
 
-            <div className="max-w-7xl mx-auto px-4">
-                <div className="flex flex-col lg:flex-row gap-8">
-                    {/* Cart Items List */}
-                    <div className="flex-1 space-y-4">
-                        {cartItems.map((item) => (
-                            <div key={item.product._id} className="bg-white rounded-2xl p-4 md:p-6 border border-[var(--border)] shadow-sm flex flex-col md:flex-row gap-6 items-center md:items-start group hover:border-[var(--primary)] transition-colors">
-                                {/* Product Image */}
-                                <div className="w-24 h-24 md:w-32 md:h-32 shrink-0 bg-gray-50 rounded-xl overflow-hidden border border-[var(--border)]">
-                                    <Image
-                                        src={item.product.imageCover}
-                                        alt={item.product.title}
-                                        width={128}
-                                        height={128}
-                                        className="w-full h-full object-cover"
-                                    />
-                                </div>
-
-                                {/* Product Info */}
-                                <div className="flex-1 w-full text-center md:text-left">
-                                    <h3 className="text-lg font-bold text-[var(--text-dark)] mb-1 line-clamp-1">{item.product.title}</h3>
-                                    <p className="text-[var(--primary)] font-bold mb-4">{item.price} EGP</p>
-
-                                    <div className="flex items-center justify-center md:justify-between flex-wrap gap-4">
-                                        {/* Quantity Controls */}
-                                        <div className="flex items-center border border-[var(--border)] rounded-lg overflow-hidden bg-[var(--bg-light)]">
-                                            <button
-                                                onClick={() => updateCartItemCount(item.product._id, item.count - 1)}
-                                                disabled={item.count <= 1}
-                                                className="w-9 h-9 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                                            >
-                                                <Minus className="w-3.5 h-3.5" />
-                                            </button>
-                                            <span className="w-10 text-center font-semibold text-sm">{item.count}</span>
-                                            <button
-                                                onClick={() => updateCartItemCount(item.product._id, item.count + 1)}
-                                                className="w-9 h-9 flex items-center justify-center hover:bg-gray-200 transition-colors"
-                                            >
-                                                <Plus className="w-3.5 h-3.5" />
-                                            </button>
+                <div className="max-w-7xl mx-auto px-4">
+                    <div className="flex flex-col lg:flex-row gap-8">
+                        {/* Cart Items List */}
+                        <div className="flex-1 space-y-4">
+                            {cartItems.map((item) => {
+                                const isUpdating = updatingItems[item.product._id];
+                                
+                                return (
+                                    <div 
+                                        key={item.product._id} 
+                                        className={`bg-white rounded-2xl p-4 md:p-6 border border-[var(--border)] shadow-sm flex flex-col md:flex-row gap-6 items-center md:items-start group hover:border-[var(--primary)] transition-all ${isUpdating ? 'opacity-60 pointer-events-none' : ''}`}
+                                    >
+                                        {/* Product Image */}
+                                        <div className="w-24 h-24 md:w-32 md:h-32 shrink-0 bg-gray-50 rounded-xl overflow-hidden border border-[var(--border)] relative">
+                                            <Image
+                                                src={item.product.imageCover}
+                                                alt={item.product.title}
+                                                width={128}
+                                                height={128}
+                                                className="w-full h-full object-cover"
+                                            />
+                                            {isUpdating && (
+                                                <div className="absolute inset-0 bg-white/80 flex items-center justify-center">
+                                                    <div className="w-8 h-8 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+                                                </div>
+                                            )}
                                         </div>
 
-                                        <div className="flex items-center gap-4">
-                                            <span className="font-bold text-lg md:hidden">
-                                                {(item.price * item.count).toFixed(2)} EGP
-                                            </span>
-                                            <button
-                                                onClick={() => removeFromCart(item.product._id)}
-                                                className="text-gray-400 hover:text-red-500 transition-colors p-2"
-                                                title="Remove Item"
-                                            >
-                                                <Trash2 className="w-5 h-5" />
-                                            </button>
+                                        {/* Product Info */}
+                                        <div className="flex-1 w-full text-center md:text-left">
+                                            <h3 className="text-lg font-bold text-[var(--text-dark)] mb-1 line-clamp-1">{item.product.title}</h3>
+                                            <p className="text-[var(--primary)] font-bold mb-4">{item.price} EGP</p>
+
+                                            <div className="flex items-center justify-center md:justify-between flex-wrap gap-4">
+                                                {/* Quantity Controls */}
+                                                <div className="flex items-center border border-[var(--border)] rounded-lg overflow-hidden bg-[var(--bg-light)]">
+                                                    <button
+                                                        onClick={() => handleUpdateQuantity(item.product._id, item.count - 1)}
+                                                        disabled={item.count <= 1 || isUpdating}
+                                                        className="w-9 h-9 flex items-center justify-center hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                                                    >
+                                                        <Minus className="w-3.5 h-3.5" />
+                                                    </button>
+                                                    <span className="w-10 text-center font-semibold text-sm">{item.count}</span>
+                                                    <button
+                                                        onClick={() => handleUpdateQuantity(item.product._id, item.count + 1)}
+                                                        disabled={isUpdating}
+                                                        className="w-9 h-9 flex items-center justify-center hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    >
+                                                        <Plus className="w-3.5 h-3.5" />
+                                                    </button>
+                                                </div>
+
+                                                <div className="flex items-center gap-4">
+                                                    <span className="font-bold text-lg md:hidden">
+                                                        {(item.price * item.count).toFixed(2)} EGP
+                                                    </span>
+                                                    <button
+                                                        onClick={() => handleDeleteClick(item.product._id, item.product.title)}
+                                                        className="text-gray-400 hover:text-red-500 transition-colors p-2"
+                                                        title="Remove Item"
+                                                    >
+                                                        <Trash2 className="w-5 h-5" />
+                                                    </button>
+                                                </div>
+                                            </div>
                                         </div>
+
+                                        {/* Total Price (Desktop) */}
+                                        <div className="hidden md:block text-right min-w-[100px]">
+                                            <span className="block text-sm text-[var(--text-gray)] mb-1">Total</span>
+                                            <span className="text-xl font-bold text-[var(--text-dark)]">{(item.price * item.count).toFixed(2)} EGP</span>
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
+
+                        {/* Order Summary */}
+                        <div className="lg:w-96 shrink-0">
+                            <div className="bg-white rounded-2xl border border-[var(--border)] shadow-sm p-6 md:p-8 sticky top-24">
+                                <h2 className="text-xl font-bold text-[var(--text-dark)] mb-6">Order Summary</h2>
+
+                                <div className="space-y-4 mb-6">
+                                    <div className="flex justify-between items-center text-[var(--text-gray)]">
+                                        <span>Subtotal</span>
+                                        <span>{cartData?.totalCartPrice || 0} EGP</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-[var(--text-gray)]">
+                                        <span>Shipping Estimate</span>
+                                        <span className="text-green-600 font-medium">Free</span>
+                                    </div>
+                                    <div className="flex justify-between items-center text-[var(--text-gray)]">
+                                        <span>Tax Estimate</span>
+                                        <span>0 EGP</span>
                                     </div>
                                 </div>
 
-                                {/* Total Price (Desktop) */}
-                                <div className="hidden md:block text-right min-w-[100px]">
-                                    <span className="block text-sm text-[var(--text-gray)] mb-1">Total</span>
-                                    <span className="text-xl font-bold text-[var(--text-dark)]">{(item.price * item.count).toFixed(2)} EGP</span>
+                                <div className="border-t border-[var(--border)] pt-4 mb-8">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="text-lg font-bold text-[var(--text-dark)]">Order Total</span>
+                                        <span className="text-2xl font-bold text-[var(--text-dark)]">{cartData?.totalCartPrice || 0} EGP</span>
+                                    </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
 
-                    {/* Order Summary */}
-                    <div className="lg:w-96 shrink-0">
-                        <div className="bg-white rounded-2xl border border-[var(--border)] shadow-sm p-6 md:p-8 sticky top-24">
-                            <h2 className="text-xl font-bold text-[var(--text-dark)] mb-6">Order Summary</h2>
+                                <Link
+                                    href="/checkout"
+                                    className="w-full flex items-center justify-center gap-2 py-4 bg-[var(--primary)] text-white rounded-xl font-bold hover:bg-[var(--primary-dark)] transition-all shadow-lg shadow-[var(--primary)]/20 hover:shadow-xl hover:shadow-[var(--primary)]/30 active:scale-95 group"
+                                >
+                                    Checkout
+                                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                                </Link>
 
-                            <div className="space-y-4 mb-6">
-                                <div className="flex justify-between items-center text-[var(--text-gray)]">
-                                    <span>Subtotal</span>
-                                    <span>{cartData?.totalCartPrice || 0} EGP</span>
-                                </div>
-                                <div className="flex justify-between items-center text-[var(--text-gray)]">
-                                    <span>Shipping Estimate</span>
-                                    <span className="text-green-600 font-medium">Free</span>
-                                </div>
-                                <div className="flex justify-between items-center text-[var(--text-gray)]">
-                                    <span>Tax Estimate</span>
-                                    <span>0 EGP</span>
-                                </div>
-                            </div>
-
-                            <div className="border-t border-[var(--border)] pt-4 mb-8">
-                                <div className="flex justify-between items-center mb-1">
-                                    <span className="text-lg font-bold text-[var(--text-dark)]">Order Total</span>
-                                    <span className="text-2xl font-bold text-[var(--text-dark)]">{cartData?.totalCartPrice || 0} EGP</span>
-                                </div>
-                            </div>
-
-                            <Link
-                                href="/checkout"
-                                className="w-full flex items-center justify-center gap-2 py-4 bg-[var(--primary)] text-white rounded-xl font-bold hover:bg-[var(--primary-dark)] transition-all shadow-lg shadow-[var(--primary)]/20 hover:shadow-xl hover:shadow-[var(--primary)]/30 active:scale-95 group"
-                            >
-                                Checkout
-                                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                            </Link>
-
-                            <div className="mt-6 flex flex-col gap-3 text-center">
-                                <p className="text-xs text-[var(--text-gray)]">
-                                    Secure Checkout - SSL Encrypted
-                                </p>
-                                <div className="flex justify-center gap-2 opacity-50 grayscale hover:grayscale-0 transition-all duration-300">
-                                    {/* Placeholders for payment icons can go here */}
+                                <div className="mt-6 flex flex-col gap-3 text-center">
+                                    <p className="text-xs text-[var(--text-gray)]">
+                                        Secure Checkout - SSL Encrypted
+                                    </p>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
+
+            {/* Delete Confirmation Modal */}
+            <DeleteConfirmModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, productId: '', productName: '', isDeleting: false })}
+                onConfirm={handleConfirmDelete}
+                isLoading={deleteModal.isDeleting}
+                productName={deleteModal.productName}
+            />
+        </>
     );
 }

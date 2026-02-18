@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { useAuth } from "@/app/context/AuthContext";
 import { useCart } from "@/app/context/CartContext";
+import { useWishlist } from "@/app/context/WishlistContext";
 import UserDropdown from '@/app/components/userDropDownMenu';
 import {
     Phone,
@@ -40,6 +41,7 @@ const categoryDropdownLinks = [
 export default function Navbar() {
     const { user, isAuthenticated, isLoading } = useAuth();
     const { cartCount } = useCart();
+    const { wishlistCount } = useWishlist();
     const pathname = usePathname();
     const [mobileOpen, setMobileOpen] = useState(false);
     const [catOpen, setCatOpen] = useState(false);
@@ -172,12 +174,17 @@ export default function Navbar() {
 
                     {/* Right Side Icons & User Menu */}
                     <div className="flex items-center gap-2">
-                        {/* Wishlist */}
+                        {/* Wishlist with Badge */}
                         <Link
                             href="/wishlist"
                             className="p-2 rounded-xl text-neutral-600 hover:bg-primary-50 hover:text-primary-600 transition relative"
                         >
                             <Heart className="w-5 h-5" />
+                            {wishlistCount > 0 && (
+                                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                                    {wishlistCount > 9 ? '9+' : wishlistCount}
+                                </span>
+                            )}
                         </Link>
 
                         {/* Shopping Cart with Badge */}
@@ -270,9 +277,14 @@ export default function Navbar() {
                                         <Link
                                             href="/wishlist"
                                             onClick={() => setMobileOpen(false)}
-                                            className="block px-4 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100"
+                                            className="block px-4 py-2 rounded-lg text-sm text-gray-700 hover:bg-gray-100 flex items-center justify-between"
                                         >
                                             My Wishlist
+                                            {wishlistCount > 0 && (
+                                                <span className="px-2 py-1 bg-red-100 text-red-600 text-xs font-bold rounded-full">
+                                                    {wishlistCount}
+                                                </span>
+                                            )}
                                         </Link>
                                     </div>
                                 </div>
