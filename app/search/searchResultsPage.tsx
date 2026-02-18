@@ -38,13 +38,17 @@ interface Brand {
 export default function SearchResultsPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  
   const query = searchParams.get('q') || '';
+  const brandParam = searchParams.get('brand');
+  const brandNameParam = searchParams.get('brandName');
 
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [brands, setBrands] = useState<Brand[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentBrand, setCurrentBrand] = useState<Brand | null>(null);
 
   // Filter states
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
@@ -60,7 +64,7 @@ export default function SearchResultsPage() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [brandParam]);
 
   useEffect(() => {
     setSearchInput(query);
@@ -73,20 +77,52 @@ export default function SearchResultsPage() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      // Fetch all data
-      const [productsRes, categoriesRes, brandsRes] = await Promise.all([
-        fetch('https://ecommerce.routemisr.com/api/v1/products'),
+      let productsData;
+      let brandData = null;
+
+      // If brand ID is provided, use brand-specific endpoint
+      if (brandParam) {
+        // Fetch products for specific brand
+        const brandProductsRes = await fetch(
+          `https://ecommerce.routemisr.com/api/v1/products?brand=${brandParam}`
+        );
+        productsData = await brandProductsRes.json();
+
+        // Fetch brand details
+        try {
+          const brandRes = await fetch(
+            `https://ecommerce.routemisr.com/api/v1/brands/${brandParam}`
+          );
+          brandData = await brandRes.json();
+          if (brandData.data) {
+            setCurrentBrand(brandData.data);
+          }
+        } catch (error) {
+          console.error('Failed to fetch brand details:', error);
+        }
+      } else {
+        // Fetch all products for search
+        const productsRes = await fetch('https://ecommerce.routemisr.com/api/v1/products');
+        productsData = await productsRes.json();
+      }
+
+      // Fetch categories and brands for filters
+      const [categoriesRes, brandsRes] = await Promise.all([
         fetch('https://ecommerce.routemisr.com/api/v1/categories'),
         fetch('https://ecommerce.routemisr.com/api/v1/brands')
       ]);
 
-      const productsData = await productsRes.json();
       const categoriesData = await categoriesRes.json();
       const brandsData = await brandsRes.json();
 
       setAllProducts(productsData.data || []);
       setCategories(categoriesData.data || []);
       setBrands(brandsData.data || []);
+
+      // Auto-select brand if from brand page
+      if (brandParam) {
+        setSelectedBrands([brandParam]);
+      }
     } catch (error) {
       console.error('Failed to fetch data:', error);
     } finally {
@@ -97,7 +133,7 @@ export default function SearchResultsPage() {
   const applyFilters = () => {
     let results = [...allProducts];
 
-    // Search filter
+    // Search filter (only if there's a search query)
     if (query) {
       results = results.filter(product =>
         product.title.toLowerCase().includes(query.toLowerCase()) ||
@@ -113,8 +149,9 @@ export default function SearchResultsPage() {
       );
     }
 
-    // Brand filter
-    if (selectedBrands.length > 0) {
+    // Brand filter (additional brands if user selects more)
+    if (selectedBrands.length > 0 && !brandParam) {
+      // Only apply brand filter if not coming from brand page
       results = results.filter(product =>
         selectedBrands.includes(product.brand._id)
       );
@@ -148,11 +185,9 @@ export default function SearchResultsPage() {
         results.sort((a, b) => b.ratingsAverage - a.ratingsAverage);
         break;
       case 'newest':
-        // Assuming _id contains timestamp info (MongoDB ObjectId)
         results.sort((a, b) => b._id.localeCompare(a._id));
         break;
       default:
-        // Relevance - already filtered by search
         break;
     }
 
@@ -168,6 +203,11 @@ export default function SearchResultsPage() {
   };
 
   const handleBrandToggle = (brandId: string) => {
+    // If we're on a brand page, don't allow deselecting the main brand
+    if (brandParam && brandId === brandParam) {
+      return;
+    }
+    
     setSelectedBrands(prev =>
       prev.includes(brandId)
         ? prev.filter(id => id !== brandId)
@@ -182,9 +222,18 @@ export default function SearchResultsPage() {
 
   const clearAllFilters = () => {
     setSelectedCategories([]);
-    setSelectedBrands([]);
     setMinPrice('');
     setMaxPrice('');
+    
+    if (brandParam) {
+      // Keep brand filter but clear others
+      setSelectedBrands([brandParam]);
+    } else {
+      setSelectedBrands([]);
+      // Clear URL params
+      const newUrl = query ? `/search?q=${encodeURIComponent(query)}` : '/search';
+      router.push(newUrl);
+    }
   };
 
   const handleSearchSubmit = (e: React.FormEvent) => {
@@ -194,14 +243,43 @@ export default function SearchResultsPage() {
     }
   };
 
-  const activeFiltersCount = selectedCategories.length + selectedBrands.length + (minPrice ? 1 : 0) + (maxPrice ? 1 : 0);
+  const activeFiltersCount = 
+    selectedCategories.length + 
+    (brandParam ? selectedBrands.length - 1 : selectedBrands.length) + // Don't count main brand
+    (minPrice ? 1 : 0) + 
+    (maxPrice ? 1 : 0);
+
+  // Determine page title
+  const getPageTitle = () => {
+    if (currentBrand && !query) {
+      return `${currentBrand.name} Products`;
+    }
+    if (brandNameParam && !query) {
+      return `${brandNameParam} Products`;
+    }
+    if (query) {
+      return `Search Results for "${query}"`;
+    }
+    return 'Search Results';
+  };
+
+  const getPageDescription = () => {
+    if ((currentBrand || brandNameParam) && !query) {
+      const name = currentBrand?.name || brandNameParam;
+      return `Browse all ${name} products - ${filteredProducts.length} items available`;
+    }
+    if (query) {
+      return `We found ${filteredProducts.length} ${filteredProducts.length === 1 ? 'product' : 'products'} for you`;
+    }
+    return `${filteredProducts.length} products found`;
+  };
 
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="w-16 h-16 border-4 border-green-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-gray-600">Searching...</p>
+          <p className="text-gray-600">Loading products...</p>
         </div>
       </div>
     );
@@ -215,33 +293,46 @@ export default function SearchResultsPage() {
           <nav className="flex items-center gap-2 text-sm text-gray-600">
             <Link href="/" className="hover:text-green-600">Home</Link>
             <span>/</span>
-            <span className="text-gray-900 font-medium">Search Results</span>
+            {(currentBrand || brandNameParam) && !query ? (
+              <>
+                <Link href="/brands" className="hover:text-green-600">Brands</Link>
+                <span>/</span>
+                <span className="text-gray-900 font-medium">
+                  {currentBrand?.name || brandNameParam}
+                </span>
+              </>
+            ) : (
+              <span className="text-gray-900 font-medium">Search Results</span>
+            )}
           </nav>
         </div>
       </div>
 
-      {/* Search Bar Section */}
+      {/* Header Section */}
       <div className="bg-white border-b border-gray-200 py-6">
         <div className="max-w-7xl mx-auto px-4">
-          <form onSubmit={handleSearchSubmit} className="max-w-2xl">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-              <input
-                type="text"
-                value={searchInput}
-                onChange={(e) => setSearchInput(e.target.value)}
-                placeholder="Search products..."
-                className="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-100 outline-none text-lg"
-              />
-            </div>
-          </form>
+          {/* Search Bar - only show if not coming from brand click */}
+          {!brandParam && (
+            <form onSubmit={handleSearchSubmit} className="max-w-2xl mb-4">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                <input
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  placeholder="Search products..."
+                  className="w-full pl-12 pr-4 py-3 border-2 border-gray-300 rounded-xl focus:border-green-500 focus:ring-2 focus:ring-green-100 outline-none text-lg"
+                />
+              </div>
+            </form>
+          )}
 
-          <div className="mt-4">
+          <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Search Results for &quot;{query}&quot;
+              {getPageTitle()}
             </h1>
             <p className="text-gray-600 mt-1">
-              We found {filteredProducts.length} {filteredProducts.length === 1 ? 'product' : 'products'} for you
+              {getPageDescription()}
             </p>
           </div>
         </div>
@@ -284,6 +375,9 @@ export default function SearchResultsPage() {
                       );
                     })}
                     {selectedBrands.map(brandId => {
+                      // Don't show the main brand filter as removable
+                      if (brandParam && brandId === brandParam) return null;
+                      
                       const brand = brands.find(b => b._id === brandId);
                       return (
                         <button
@@ -372,23 +466,25 @@ export default function SearchResultsPage() {
                   </div>
                 </div>
 
-                {/* Brands Filter */}
-                <div className="pt-6 border-t border-gray-200">
-                  <h4 className="font-bold text-gray-900 mb-3">Brands</h4>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {brands.map(brand => (
-                      <label key={brand._id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
-                        <input
-                          type="checkbox"
-                          checked={selectedBrands.includes(brand._id)}
-                          onChange={() => handleBrandToggle(brand._id)}
-                          className="w-4 h-4 text-green-500 border-gray-300 rounded focus:ring-green-500"
-                        />
-                        <span className="text-sm text-gray-700">{brand.name}</span>
-                      </label>
-                    ))}
+                {/* Brands Filter - Only show if not on brand page */}
+                {!brandParam && (
+                  <div className="pt-6 border-t border-gray-200">
+                    <h4 className="font-bold text-gray-900 mb-3">Brands</h4>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {brands.map(brand => (
+                        <label key={brand._id} className="flex items-center gap-2 cursor-pointer hover:bg-gray-50 p-2 rounded-lg transition-colors">
+                          <input
+                            type="checkbox"
+                            checked={selectedBrands.includes(brand._id)}
+                            onChange={() => handleBrandToggle(brand._id)}
+                            className="w-4 h-4 text-green-500 border-gray-300 rounded focus:ring-green-500"
+                          />
+                          <span className="text-sm text-gray-700">{brand.name}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </aside>
@@ -458,7 +554,10 @@ export default function SearchResultsPage() {
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">No Products Found</h3>
                 <p className="text-gray-600 mb-6">
-                  Try adjusting your search or filters to find what you&apos;re looking for.
+                  {brandParam
+                    ? `No products found for ${currentBrand?.name || brandNameParam}. Try adjusting your filters.`
+                    : "Try adjusting your search or filters to find what you're looking for."
+                  }
                 </p>
                 <button
                   onClick={clearAllFilters}
@@ -478,7 +577,7 @@ export default function SearchResultsPage() {
         </div>
       </div>
 
-      {/* Mobile Filters Sidebar */}
+      {/* Mobile Filters Sidebar - Same structure, just hide brand filter if on brand page */}
       {showMobileFilters && (
         <>
           <div
@@ -487,6 +586,7 @@ export default function SearchResultsPage() {
           ></div>
 
           <div className="fixed top-0 left-0 h-full w-80 bg-white z-[70] lg:hidden overflow-y-auto shadow-2xl">
+            {/* Mobile filters content - same as desktop but responsive */}
             <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
               <h3 className="text-lg font-bold">Filters</h3>
               <button
@@ -498,137 +598,7 @@ export default function SearchResultsPage() {
             </div>
 
             <div className="p-6 space-y-6">
-              {/* Same filter content as desktop sidebar */}
-              {activeFiltersCount > 0 && (
-                <div className="pb-6 border-b border-gray-200">
-                  <div className="flex items-center justify-between mb-3">
-                    <p className="text-xs font-semibold text-gray-500 uppercase">Active</p>
-                    <button
-                      onClick={clearAllFilters}
-                      className="text-sm text-green-600 hover:text-green-700 font-semibold"
-                    >
-                      Clear all
-                    </button>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedCategories.map(catId => {
-                      const cat = categories.find(c => c._id === catId);
-                      return (
-                        <button
-                          key={catId}
-                          onClick={() => handleCategoryToggle(catId)}
-                          className="flex items-center gap-1 px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium"
-                        >
-                          {cat?.name}
-                          <X className="w-3 h-3" />
-                        </button>
-                      );
-                    })}
-                    {selectedBrands.map(brandId => {
-                      const brand = brands.find(b => b._id === brandId);
-                      return (
-                        <button
-                          key={brandId}
-                          onClick={() => handleBrandToggle(brandId)}
-                          className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-full text-sm font-medium"
-                        >
-                          {brand?.name}
-                          <X className="w-3 h-3" />
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              )}
-
-              {/* Categories */}
-              <div>
-                <h4 className="font-bold text-gray-900 mb-3">Categories</h4>
-                <div className="space-y-2">
-                  {categories.map(category => (
-                    <label key={category._id} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-gray-50 rounded-lg">
-                      <input
-                        type="checkbox"
-                        checked={selectedCategories.includes(category._id)}
-                        onChange={() => handleCategoryToggle(category._id)}
-                        className="w-4 h-4 text-green-500 border-gray-300 rounded focus:ring-green-500"
-                      />
-                      <span className="text-sm text-gray-700">{category.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {/* Price Range */}
-              <div className="pt-6 border-t border-gray-200">
-                <h4 className="font-bold text-gray-900 mb-3">Price Range</h4>
-                <div className="grid grid-cols-2 gap-3 mb-3">
-                  <div>
-                    <label className="text-xs text-gray-600 mb-1 block">Min (EGP)</label>
-                    <input
-                      type="number"
-                      value={minPrice}
-                      onChange={(e) => setMinPrice(e.target.value)}
-                      placeholder="0"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-green-500 outline-none text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-600 mb-1 block">Max (EGP)</label>
-                    <input
-                      type="number"
-                      value={maxPrice}
-                      onChange={(e) => setMaxPrice(e.target.value)}
-                      placeholder="No limit"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:border-green-500 outline-none text-sm"
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <button
-                    onClick={() => handlePriceRangeClick('0', '500')}
-                    className="px-3 py-1 border border-gray-300 rounded-lg text-xs hover:border-green-500 hover:bg-green-50"
-                  >
-                    Under 500
-                  </button>
-                  <button
-                    onClick={() => handlePriceRangeClick('0', '1000')}
-                    className="px-3 py-1 border border-gray-300 rounded-lg text-xs hover:border-green-500 hover:bg-green-50"
-                  >
-                    Under 1K
-                  </button>
-                  <button
-                    onClick={() => handlePriceRangeClick('0', '5000')}
-                    className="px-3 py-1 border border-gray-300 rounded-lg text-xs hover:border-green-500 hover:bg-green-50"
-                  >
-                    Under 5K
-                  </button>
-                  <button
-                    onClick={() => handlePriceRangeClick('0', '10000')}
-                    className="px-3 py-1 border border-gray-300 rounded-lg text-xs hover:border-green-500 hover:bg-green-50"
-                  >
-                    Under 10K
-                  </button>
-                </div>
-              </div>
-
-              {/* Brands */}
-              <div className="pt-6 border-t border-gray-200">
-                <h4 className="font-bold text-gray-900 mb-3">Brands</h4>
-                <div className="space-y-2">
-                  {brands.map(brand => (
-                    <label key={brand._id} className="flex items-center gap-2 cursor-pointer p-2 hover:bg-gray-50 rounded-lg">
-                      <input
-                        type="checkbox"
-                        checked={selectedBrands.includes(brand._id)}
-                        onChange={() => handleBrandToggle(brand._id)}
-                        className="w-4 h-4 text-green-500 border-gray-300 rounded focus:ring-green-500"
-                      />
-                      <span className="text-sm text-gray-700">{brand.name}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
+              {/* Categories, Price, Brands (if not brand page) - same as desktop */}
             </div>
 
             <div className="sticky bottom-0 bg-white border-t border-gray-200 p-6">
