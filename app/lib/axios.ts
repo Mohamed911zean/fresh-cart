@@ -3,7 +3,7 @@ import Cookies from 'js-cookie';
 import toast from 'react-hot-toast';
 
 const apiClient = axios.create({
-    baseURL: 'https://ecommerce.routemisr.com/api/v1',
+    baseURL: process.env.NEXT_PUBLIC_API_URL,
     timeout: 30000, 
 });
 

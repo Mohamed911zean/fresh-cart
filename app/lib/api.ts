@@ -66,8 +66,8 @@ export interface ApiResponse<T> {
 
 export async function getProducts(limit?: number): Promise<Product[]> {
     const url = limit
-        ? `${BASE_URL}/api/v1/products?limit=${limit}`
-        : `${BASE_URL}/api/v1/products?limit=40`;
+        ? `${BASE_URL}/products?limit=${limit}`
+        : `${BASE_URL}/products?limit=40`;
     const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) throw new Error("Failed to fetch products");
     const json: ApiResponse<Product> = await res.json();
@@ -75,7 +75,7 @@ export async function getProducts(limit?: number): Promise<Product[]> {
 }
 
 export async function getProduct(id: string): Promise<Product> {
-    const res = await fetch(`${BASE_URL}/api/v1/products/${id}`, {
+    const res = await fetch(`${BASE_URL}/products/${id}`, {
         next: { revalidate: 3600 },
     });
     if (!res.ok) throw new Error("Failed to fetch product");
@@ -84,7 +84,7 @@ export async function getProduct(id: string): Promise<Product> {
 }
 
 export async function getCategories(): Promise<Category[]> {
-    const res = await fetch(`${BASE_URL}/api/v1/categories`, {
+    const res = await fetch(`${BASE_URL}/categories`, {
         next: { revalidate: 3600 },
     });
     if (!res.ok) throw new Error("Failed to fetch categories");
@@ -94,8 +94,8 @@ export async function getCategories(): Promise<Category[]> {
 
 export async function getBrands(limit?: number): Promise<Brand[]> {
     const url = limit
-        ? `${BASE_URL}/api/v1/brands?limit=${limit}`
-        : `${BASE_URL}/api/v1/brands?limit=40`;
+        ? `${BASE_URL}/brands?limit=${limit}`
+        : `${BASE_URL}/brands?limit=40`;
     const res = await fetch(url, { next: { revalidate: 3600 } });
     if (!res.ok) throw new Error("Failed to fetch brands");
     const json: ApiResponse<Brand> = await res.json();
